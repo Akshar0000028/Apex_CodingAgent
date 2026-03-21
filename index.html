@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>APEX — AI Coding Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;500;600&family=Georgia&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+<style>
+/* ── Reset ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Classic Light Palette ───────────────────────────────────── */
+:root {
+  --bg:         #f5f0e8;
+  --surface:    #ede8df;
+  --panel:      #e6e0d4;
+  --border:     #c8bfaf;
+  --border2:    #b5aa98;
+  --text:       #1a1612;
+  --text2:      #3d3530;
+  --muted:      #7a6f62;
+  --accent:     #2d5a8e;
+  --accent-lt:  #e8eef5;
+  --accent-mid: #4a7ab5;
+  --green:      #2a6b3c;
+  --green-lt:   #e8f4ec;
+  --red:        #8b1a1a;
+  --red-lt:     #f5e8e8;
+  --gold:       #7a5c00;
+  --gold-lt:    #fdf6e3;
+  --code-bg:    #1e1e1e;
+  --code-text:  #d4d4d4;
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.12);
+  --shadow-md:  0 2px 8px rgba(0,0,0,0.15);
+  --font-body:  'Inter', system-ui, sans-serif;
+  --font-mono:  'Source Code Pro', 'Courier New', monospace;
+  --font-serif: 'Georgia', serif;
+  --radius:     6px;
+  --radius-lg:  10px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow: hidden;
+}
+
+/* ── Layout ──────────────────────────────────────────────────── */
+.app {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 52px 1fr;
+  height: 100vh;
+}
+
+/* ── Header ──────────────────────────────────────────────────── */
+header {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  background: var(--accent);
+  gap: 14px;
+  box-shadow: var(--shadow-md);
+  position: relative;
+  z-index: 10;
+}
+
+.logo {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: normal;
+  letter-spacing: 0.06em;
+  color: #fff;
+}
+.logo span { color: #a8c8f0; font-style: italic; }
+
+.header-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent);
+  background: #fff;
+  border-radius: 3px;
+  padding: 2px 7px;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.header-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.status-indicator { display: flex; align-items: center; gap: 6px; }
+
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #ccc;
+  transition: background 0.3s;
+}
+.status-dot.online { background: #7ecf9a; box-shadow: 0 0 5px #7ecf9a; }
+.status-dot.error  { background: #f08080; }
+
+.status-text {
+  font-size: 11px;
+  color: rgba(255,255,255,0.75);
+  font-family: var(--font-mono);
+}
+
+.model-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(255,255,255,0.6);
+  border: 1px solid rgba(255,255,255,0.25);
+  padding: 2px 8px;
+  border-radius: 3px;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sidebar-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 8px 8px 4px;
+}
+
+.agent-btn {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--font-body);
+  font-size: 13px;
+  transition: all 0.12s;
+  width: 100%;
+  text-align: left;
+}
+.agent-btn:hover { background: var(--panel); border-color: var(--border); color: var(--text); }
+.agent-btn.active { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }
+.agent-btn .icon { font-size: 14px; width: 18px; text-align: center; flex-shrink: 0; margin-top: 1px; }
+.agent-name { font-weight: 500; display: block; line-height: 1.3; }
+.agent-hint { font-size: 10.5px; color: var(--muted); display: block; margin-top: 1px; line-height: 1.3; }
+.agent-btn.active .agent-hint { color: var(--accent-mid); }
+
+.sidebar-divider { height: 1px; background: var(--border); margin: 8px 4px; }
+
+/* ── History panel ───────────────────────────────────────────── */
+.history-section { flex-shrink: 0; }
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px 4px;
+}
+
+.history-clear {
+  font-size: 10px;
+  color: var(--muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  padding: 1px 4px;
+  border-radius: 3px;
+  transition: color 0.12s;
+}
+.history-clear:hover { color: var(--red); }
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.history-list::-webkit-scrollbar { width: 3px; }
+.history-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+.history-item {
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text2);
+  transition: all 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.history-item:hover { background: var(--accent-lt); border-color: var(--accent); color: var(--accent); }
+
+.history-item .hist-time {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 1px;
+}
+
+.history-empty {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  padding: 8px;
+  font-style: italic;
+}
+
+/* ── API key ─────────────────────────────────────────────────── */
+.api-section { margin-top: auto; flex-shrink: 0; }
+
+.api-box {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.api-box label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.api-box input {
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: 4px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.api-box input:focus { border-color: var(--accent); }
+
+.save-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  width: 100%;
+  transition: background 0.15s;
+}
+.save-btn:hover { background: var(--accent-mid); }
+
+/* ── Main area ───────────────────────────────────────────────── */
+.main { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+
+.mode-bar {
+  padding: 7px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  box-shadow: var(--shadow-sm);
+}
+.mode-icon { font-size: 13px; }
+.mode-name { color: var(--text); font-weight: 600; font-size: 12.5px; }
+.mode-desc { font-size: 11px; color: var(--muted); }
+
+/* memory indicator in mode bar */
+.memory-pill {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--green);
+  background: var(--green-lt);
+  border: 1px solid #9ad4b0;
+  padding: 2px 8px;
+  border-radius: 10px;
+  display: none;
+}
+.memory-pill.visible { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ── Messages ────────────────────────────────────────────────── */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.messages::-webkit-scrollbar { width: 5px; }
+.messages::-webkit-scrollbar-track { background: var(--surface); }
+.messages::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── Welcome ─────────────────────────────────────────────────── */
+.welcome {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 14px;
+  padding: 40px;
+  animation: fadeUp 0.5s ease;
+}
+.welcome-icon {
+  width: 64px; height: 64px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: #fff;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 4px;
+}
+.welcome h2 { font-family: var(--font-serif); font-size: 26px; font-weight: normal; color: var(--text); }
+.welcome p  { font-size: 13.5px; color: var(--muted); max-width: 440px; line-height: 1.75; }
+.examples   { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; max-width: 580px; margin-top: 4px; }
+.chip {
+  padding: 6px 14px;
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  font-size: 12px;
+  color: var(--text2);
+  cursor: pointer;
+  background: var(--surface);
+  transition: all 0.12s;
+}
+.chip:hover { border-color: var(--accent); background: var(--accent-lt); color: var(--accent); }
+
+/* ── Message bubbles ─────────────────────────────────────────── */
+.msg {
+  display: flex;
+  gap: 12px;
+  max-width: 880px;
+  width: 100%;
+  animation: fadeUp 0.25s ease;
+}
+.msg.user      { align-self: flex-end; flex-direction: row-reverse; }
+.msg.assistant { align-self: flex-start; }
+
+.msg-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600;
+  flex-shrink: 0; margin-top: 2px;
+}
+.msg.user      .msg-avatar { background: var(--panel); border: 1px solid var(--border2); color: var(--text2); }
+.msg.assistant .msg-avatar { background: var(--accent); color: #fff; box-shadow: var(--shadow-sm); }
+
+.msg-content { flex: 1; min-width: 0; }
+
+.msg-header {
+  font-size: 10.5px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.tool-badge {
+  background: var(--gold-lt); border: 1px solid #c8a830;
+  color: var(--gold); font-size: 9px; padding: 1px 6px;
+  border-radius: 3px; text-transform: uppercase;
+  letter-spacing: 0.07em; font-weight: 600;
+}
+
+.msg-bubble {
+  padding: 12px 16px;
+  border-radius: var(--radius-lg);
+  line-height: 1.75;
+  font-size: 13.5px;
+}
+.msg.user .msg-bubble {
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-lg) var(--radius-lg) 3px var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.msg.assistant .msg-bubble {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 3px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+}
+
+/* ── Code blocks ─────────────────────────────────────────────── */
+.msg-bubble pre {
+  background: var(--code-bg);
+  border-radius: 6px;
+  /* CRITICAL: preserve all whitespace & newlines exactly */
+  white-space: pre;
+  overflow-x: auto;
+  margin: 10px 0;
+  position: relative;
+  /* No padding-top so copy btn doesn't eat the first line */
+  padding: 36px 16px 14px 16px;
+}
+
+.msg-bubble pre code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--code-text);
+  background: none;
+  padding: 0;
+  /* CRITICAL: keep every space and newline intact */
+  white-space: pre;
+  display: block;
+  tab-size: 4;
+}
+
+/* lang label top-left of code block */
+.msg-bubble pre .lang-label {
+  position: absolute;
+  top: 8px; left: 12px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+/* copy button top-right */
+.copy-btn {
+  position: absolute;
+  top: 7px; right: 8px;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  color: #aaa;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 3px 9px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+  z-index: 2;
+}
+.copy-btn:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+.copy-btn.copied { background: var(--green); border-color: var(--green); color: #fff; }
+
+/* inline code */
+.msg-bubble code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: var(--panel);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+}
+
+/* markdown prose inside bubbles */
+.msg-bubble p   { margin: 6px 0; }
+.msg-bubble h1  { font-size: 17px; margin: 16px 0 6px; }
+.msg-bubble h2  { font-size: 15px; margin: 14px 0 5px; border-bottom: 1px solid var(--border); padding-bottom: 3px; }
+.msg-bubble h3  { font-size: 14px; margin: 12px 0 4px; color: var(--accent); }
+.msg-bubble ul,
+.msg-bubble ol  { padding-left: 20px; margin: 6px 0; }
+.msg-bubble li  { margin: 3px 0; }
+.msg-bubble hr  { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+.msg-bubble strong { font-weight: 600; }
+.msg-bubble em     { font-style: italic; color: var(--text2); }
+.msg-bubble table  { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 12.5px; }
+.msg-bubble th     { background: var(--panel); border: 1px solid var(--border); padding: 5px 10px; text-align: left; font-weight: 600; }
+.msg-bubble td     { border: 1px solid var(--border); padding: 5px 10px; }
+
+/* stream cursor */
+.stream-cursor::after {
+  content: '|';
+  color: var(--accent);
+  animation: blink-cur 0.65s infinite;
+  font-weight: 300;
+}
+@keyframes blink-cur { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* ── Analysis / step tracker ─────────────────────────────────── */
+.analysis-panel {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+}
+.analysis-header {
+  padding: 7px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.analysis-header:hover { color: var(--text); }
+.analysis-caret { font-size: 9px; transition: transform 0.2s; }
+.analysis-header.open .analysis-caret { transform: rotate(90deg); }
+
+.analysis-body { display: none; padding: 10px 12px; gap: 7px; flex-direction: column; }
+.analysis-body.open { display: flex; }
+
+.step-row {
+  display: flex; align-items: flex-start; gap: 9px;
+  font-size: 11.5px; font-family: var(--font-mono);
+  padding: 6px 8px; border-radius: 4px;
+  background: var(--bg); border: 1px solid var(--border);
+  transition: background 0.2s;
+}
+.step-row.done   { background: var(--green-lt); border-color: #9ad4b0; }
+.step-row.active { background: var(--gold-lt);  border-color: #e0c060; }
+
+.step-num {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--panel); border: 1px solid var(--border2);
+  color: var(--muted); font-size: 9px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.step-row.done   .step-num { background: var(--green); border-color: var(--green); color: #fff; }
+.step-row.active .step-num { background: #c8a830; border-color: #c8a830; color: #fff; }
+
+.step-info { flex: 1; }
+.step-tool-name { font-weight: 600; color: var(--accent); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+.step-row.done   .step-tool-name { color: var(--green); }
+.step-row.active .step-tool-name { color: #8a6800; }
+.step-input-preview { color: var(--muted); font-size: 10px; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 480px; }
+.step-status { font-size: 11px; flex-shrink: 0; margin-top: 1px; }
+
+/* ── Thinking indicator ──────────────────────────────────────── */
+.thinking {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 14px; background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 3px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+  width: fit-content; box-shadow: var(--shadow-sm);
+}
+.thinking-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); animation: bounce 1.2s infinite ease-in-out;
+}
+.thinking-dot:nth-child(2) { animation-delay: 0.18s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.36s; }
+@keyframes bounce { 0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+.thinking-label { font-family: var(--font-mono); font-size: 11px; color: var(--muted); margin-left: 3px; }
+
+/* ── Input area ──────────────────────────────────────────────── */
+.input-area {
+  padding: 14px 20px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 -1px 4px rgba(0,0,0,0.06);
+}
+.input-wrap {
+  display: flex; gap: 10px; align-items: flex-end;
+  background: #fff; border: 1px solid var(--border2);
+  border-radius: var(--radius-lg); padding: 10px 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: var(--shadow-sm);
+}
+.input-wrap:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(45,90,142,0.12); }
+
+textarea {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--font-body);
+  font-size: 13.5px; resize: none; line-height: 1.6;
+  max-height: 180px; overflow-y: auto; padding: 2px 0;
+}
+textarea::placeholder { color: var(--muted); }
+textarea::-webkit-scrollbar { width: 3px; }
+
+.send-btn {
+  background: var(--accent); color: #fff; border: none;
+  width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px; flex-shrink: 0; align-self: flex-end;
+  transition: background 0.15s; box-shadow: var(--shadow-sm);
+}
+.send-btn:hover:not(:disabled) { background: var(--accent-mid); }
+.send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.input-footer { display: flex; justify-content: space-between; margin-top: 7px; padding: 0 2px; }
+.input-hint { font-size: 10.5px; color: var(--muted); font-family: var(--font-mono); }
+kbd { background: var(--panel); border: 1px solid var(--border2); border-radius: 3px; padding: 0 4px; font-size: 10px; font-family: var(--font-mono); color: var(--text2); }
+.char-count { font-size: 10.5px; color: var(--muted); font-family: var(--font-mono); }
+
+/* ── Animations ──────────────────────────────────────────────── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ── Toast ───────────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 28px; right: 28px;
+  background: var(--text); color: #fff;
+  font-family: var(--font-mono); font-size: 12px;
+  padding: 9px 16px; border-radius: var(--radius);
+  opacity: 0; transform: translateY(6px);
+  transition: all 0.22s; pointer-events: none; z-index: 9999;
+  box-shadow: var(--shadow-md);
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">APEX<span>.</span></div>
+    <div class="header-badge">NVIDIA NIM</div>
+    <div class="header-right">
+      <div class="status-indicator">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="status-text" id="statusText">connecting…</span>
+      </div>
+      <div class="model-tag">llama-3.1-nemotron-ultra-253b</div>
+    </div>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-label">Agents</div>
+
+    <button class="agent-btn active" data-mode="agent" onclick="setMode(this)">
+      <span class="icon">⬡</span>
+      <div><span class="agent-name">Orchestrator</span><span class="agent-hint">Analyses, plans, chains tools automatically</span></div>
+    </button>
+    <button class="agent-btn" data-mode="generate" onclick="setMode(this)">
+      <span class="icon">✦</span>
+      <div><span class="agent-name">Generate</span><span class="agent-hint">Write production-ready code</span></div>
+    </button>
+    <button class="agent-btn" data-mode="review" onclick="setMode(this)">
+      <span class="icon">◎</span>
+      <div><span class="agent-name">Review</span><span class="agent-hint">5-pass audit: bugs, security, style</span></div>
+    </button>
+    <button class="agent-btn" data-mode="debug" onclick="setMode(this)">
+      <span class="icon">⊗</span>
+      <div><span class="agent-name">Debug</span><span class="agent-hint">6-step root cause + regression tests</span></div>
+    </button>
+    <button class="agent-btn" data-mode="explain" onclick="setMode(this)">
+      <span class="icon">◐</span>
+      <div><span class="agent-name">Explain</span><span class="agent-hint">4-layer explanation for any code</span></div>
+    </button>
+    <button class="agent-btn" data-mode="docs" onclick="setMode(this)">
+      <span class="icon">▣</span>
+      <div><span class="agent-name">Document</span><span class="agent-hint">Docstrings, README, API reference</span></div>
+    </button>
+    <button class="agent-btn" data-mode="optimize" onclick="setMode(this)">
+      <span class="icon">◆</span>
+      <div><span class="agent-name">Optimize</span><span class="agent-hint">3-phase performance analysis</span></div>
+    </button>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- History panel -->
+    <div class="history-section">
+      <div class="history-header">
+        <span class="sidebar-label" style="padding:0">Chat History</span>
+        <button class="history-clear" onclick="clearHistory()" title="Clear all history">✕ clear</button>
+      </div>
+      <div class="history-list" id="historyList">
+        <div class="history-empty">No previous chats yet</div>
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- API Key -->
+    <div class="api-section">
+      <div class="api-box">
+        <label>NVIDIA API Key</label>
+        <input type="password" id="apiKeyInput" placeholder="nvapi-…" />
+        <button class="save-btn" onclick="saveKey()">Save &amp; Connect</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="mode-bar">
+      <span class="mode-icon" id="modeIcon">⬡</span>
+      <span class="mode-name"  id="modeName">Orchestrator Agent</span>
+      <span class="mode-desc"  id="modeDesc">— Analyses your request, plans tool chain, then synthesises the final answer</span>
+      <span class="memory-pill" id="memoryPill">🧠 Memory active</span>
+    </div>
+
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-icon">⬡</div>
+        <h2>Multi-Agent Coding Assistant</h2>
+        <p>Powered by NVIDIA Llama 3.1 Nemotron Ultra 253B. The orchestrator deeply analyses every request, chains multiple specialised agents, and synthesises a thorough final answer. Your chats and code are remembered across sessions.</p>
+        <div class="examples">
+          <div class="chip" onclick="fillExample(this)">Write a FastAPI JWT auth system</div>
+          <div class="chip" onclick="fillExample(this)">Review my Python class for issues</div>
+          <div class="chip" onclick="fillExample(this)">Debug this TypeError: 'NoneType'</div>
+          <div class="chip" onclick="fillExample(this)">Explain how async/await works in Python</div>
+          <div class="chip" onclick="fillExample(this)">Optimise this database query</div>
+          <div class="chip" onclick="fillExample(this)">Generate docs for my REST API</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea
+          id="msgInput"
+          placeholder="Describe your task, paste code, or ask a question…"
+          rows="1"
+          oninput="autoResize(this); updateCount(this)"
+          onkeydown="handleKey(event)"
+        ></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send (Ctrl+Enter)">↑</button>
+      </div>
+      <div class="input-footer">
+        <span class="input-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send</span>
+        <span class="char-count" id="charCount">0</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════════════════════════
+const API_BASE = 'http://localhost:8000';
+const MAX_HISTORY_SESSIONS = 20;  // max sessions stored in localStorage
+const MAX_CONTEXT_MESSAGES = 10;  // last N messages sent as context to backend
+
+const MODES = {
+  agent:    { icon: '⬡', name: 'Orchestrator Agent',   desc: '— Analyses your request, plans tool chain, then synthesises the final answer' },
+  generate: { icon: '✦', name: 'Code Generator',       desc: '— Writes complete, production-ready code with architecture analysis' },
+  review:   { icon: '◎', name: 'Code Reviewer',         desc: '— 5-pass audit: correctness, security, performance, maintainability, best practices' },
+  debug:    { icon: '⊗', name: 'Debugger',               desc: '— 6-step methodology: root cause, corrected code, regression tests' },
+  explain:  { icon: '◐', name: 'Code Explainer',         desc: '— 4-layer explanation: big picture, walkthrough, patterns, gotchas' },
+  docs:     { icon: '▣', name: 'Documentation Writer',   desc: '— Google-style docstrings, inline comments, full README section' },
+  optimize: { icon: '◆', name: 'Optimizer',              desc: '— 3-phase: profiling analysis, optimised code, improvement report' },
+};
+
+let currentMode    = 'agent';
+let isLoading      = false;
+
+// ── In-memory conversation for the current session ───────────
+// Each entry: { role: 'user'|'assistant', content: string }
+let currentSession = [];
+let currentSessionId = null;
+
+// ════════════════════════════════════════════════════════════
+//  MEMORY  (localStorage)
+// ════════════════════════════════════════════════════════════
+
+function getStoredSessions() {
+  try {
+    return JSON.parse(localStorage.getItem('apex_sessions') || '[]');
+  } catch { return []; }
+}
+
+function saveSessionToStorage() {
+  if (!currentSession.length) return;
+  let sessions = getStoredSessions();
+
+  const sessionData = {
+    id:        currentSessionId,
+    title:     buildSessionTitle(),
+    timestamp: Date.now(),
+    messages:  currentSession,
+    mode:      currentMode,
+  };
+
+  // Replace existing or prepend
+  const idx = sessions.findIndex(s => s.id === currentSessionId);
+  if (idx !== -1) {
+    sessions[idx] = sessionData;
+  } else {
+    sessions.unshift(sessionData);
+  }
+
+  // Cap to MAX_HISTORY_SESSIONS
+  sessions = sessions.slice(0, MAX_HISTORY_SESSIONS);
+  localStorage.setItem('apex_sessions', JSON.stringify(sessions));
+}
+
+function buildSessionTitle() {
+  const first = currentSession.find(m => m.role === 'user');
+  if (!first) return 'Untitled session';
+  return first.content.slice(0, 55) + (first.content.length > 55 ? '…' : '');
+}
+
+function startNewSession() {
+  currentSessionId = `session_${Date.now()}`;
+  currentSession   = [];
+}
+
+function loadSession(session) {
+  // Save current work first
+  saveSessionToStorage();
+
+  currentSessionId = session.id;
+  currentSession   = session.messages;
+
+  // Re-render the messages panel
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+  document.getElementById('welcome')?.remove();
+
+  currentSession.forEach(m => appendMsgDOM(m.role, m.content));
+  scrollToBottom();
+  showToast(`Loaded: "${session.title.slice(0, 40)}"`);
+  updateMemoryPill();
+}
+
+function clearHistory() {
+  if (!confirm('Clear all saved chat history?')) return;
+  localStorage.removeItem('apex_sessions');
+  startNewSession();
+  renderHistoryList();
+  showToast('History cleared');
+  updateMemoryPill();
+}
+
+function renderHistoryList() {
+  const list     = document.getElementById('historyList');
+  const sessions = getStoredSessions();
+  list.innerHTML = '';
+
+  if (!sessions.length) {
+    list.innerHTML = '<div class="history-empty">No previous chats yet</div>';
+    return;
+  }
+
+  sessions.forEach(session => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    const d = new Date(session.timestamp);
+    const timeStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    item.innerHTML = `<span class="hist-time">${escHtml(timeStr)}</span>${escHtml(session.title)}`;
+    item.title = session.title;
+    item.onclick = () => loadSession(session);
+    list.appendChild(item);
+  });
+}
+
+function updateMemoryPill() {
+  const sessions = getStoredSessions();
+  const pill     = document.getElementById('memoryPill');
+  if (sessions.length > 0 || currentSession.length > 0) {
+    pill.classList.add('visible');
+    pill.textContent = `🧠 ${sessions.length} saved session${sessions.length !== 1 ? 's' : ''}`;
+  } else {
+    pill.classList.remove('visible');
+  }
+}
+
+// Build context string from recent messages to inject into the request
+function buildContextString() {
+  if (!currentSession.length) return '';
+  const recent = currentSession.slice(-MAX_CONTEXT_MESSAGES);
+  return recent.map(m => `[${m.role.toUpperCase()}]: ${m.content}`).join('\n\n');
+}
+
+// ════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem('nvidia_api_key');
+  if (saved) document.getElementById('apiKeyInput').value = saved;
+  startNewSession();
+  renderHistoryList();
+  updateMemoryPill();
+  checkHealth();
+});
+
+async function checkHealth() {
+  try {
+    const r = await fetch(`${API_BASE}/health`);
+    const d = await r.json();
+    setStatus(d.nvidia_key_set ? 'online' : '', d.nvidia_key_set ? 'connected' : 'key missing');
+  } catch {
+    setStatus('error', 'backend offline');
+  }
+}
+
+function setStatus(cls, label) {
+  document.getElementById('statusDot').className = 'status-dot' + (cls ? ' ' + cls : '');
+  document.getElementById('statusText').textContent = label;
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODE SWITCHING
+// ════════════════════════════════════════════════════════════
+function setMode(btn) {
+  document.querySelectorAll('.agent-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMode = btn.dataset.mode;
+  const m = MODES[currentMode];
+  document.getElementById('modeIcon').textContent = m.icon;
+  document.getElementById('modeName').textContent = m.name;
+  document.getElementById('modeDesc').textContent = m.desc;
+  document.getElementById('msgInput').focus();
+}
+
+// ════════════════════════════════════════════════════════════
+//  API KEY
+// ════════════════════════════════════════════════════════════
+function saveKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key) { showToast('Enter your API key first'); return; }
+  localStorage.setItem('nvidia_api_key', key);
+  showToast('Key saved — checking connection…');
+  checkHealth();
+}
+
+// ════════════════════════════════════════════════════════════
+//  SEND MESSAGE
+// ════════════════════════════════════════════════════════════
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const msg   = input.value.trim();
+  if (!msg || isLoading) return;
+
+  document.getElementById('welcome')?.remove();
+
+  // Build message with memory context injected
+  const context    = buildContextString();
+  const fullMsg    = context
+    ? `[CONVERSATION CONTEXT — use this to understand references to previous code or questions]\n\n${context}\n\n[NEW REQUEST]\n${msg}`
+    : msg;
+
+  // Show user bubble (only the clean message, not the injected context)
+  appendMsgDOM('user', msg);
+  currentSession.push({ role: 'user', content: msg });
+  saveSessionToStorage();
+  renderHistoryList();
+  updateMemoryPill();
+
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('charCount').textContent = '0';
+
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  const { bubble, stepsMap, analysisBody, analysisPanel } = appendAssistantBubble();
+
+  let assistantReply = '';
+
+  try {
+    if (currentMode === 'agent') {
+      assistantReply = await streamAgent(fullMsg, bubble, stepsMap, analysisBody, analysisPanel);
+    } else {
+      assistantReply = await streamTool(currentMode, fullMsg, bubble);
+    }
+  } catch (err) {
+    bubble.classList.remove('stream-cursor');
+    assistantReply = `⚠ Error: ${err.message}\n\nCheck your backend is running and NVIDIA_API_KEY is set.`;
+    bubble.textContent = assistantReply;
+  }
+
+  // Save assistant reply to memory
+  if (assistantReply) {
+    currentSession.push({ role: 'assistant', content: assistantReply });
+    saveSessionToStorage();
+    renderHistoryList();
+    updateMemoryPill();
+  }
+
+  isLoading = false;
+  document.getElementById('sendBtn').disabled = false;
+  input.focus();
+}
+
+// ════════════════════════════════════════════════════════════
+//  STREAMING — Orchestrator
+// ════════════════════════════════════════════════════════════
+async function streamAgent(msg, bubble, stepsMap, analysisBody, analysisPanel) {
+  const res = await fetch(`${API_BASE}/chat/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: msg }),
+  });
+  if (!res.ok) throw new Error((await res.json()).detail || 'Server error');
+
+  let raw = '';
+  let stepCounter = 0;
+
+  await readSSE(res, (ev) => {
+    if (ev.type === 'step') {
+      stepCounter++;
+      const id = `step-${Date.now()}-${stepCounter}`;
+      stepsMap[ev.tool] = id;
+      const row = document.createElement('div');
+      row.className = 'step-row active';
+      row.id = id;
+      row.innerHTML = `
+        <div class="step-num">${stepCounter}</div>
+        <div class="step-info">
+          <div class="step-tool-name">${escHtml(ev.tool)}</div>
+          <div class="step-input-preview">${escHtml(String(ev.input || '').slice(0, 90))}</div>
+        </div>
+        <div class="step-status">⏳</div>`;
+      analysisBody.appendChild(row);
+      analysisPanel.querySelector('.analysis-header').classList.add('open');
+      analysisBody.classList.add('open');
+      scrollToBottom();
+
+    } else if (ev.type === 'tool_done') {
+      const id = stepsMap[ev.tool];
+      if (id) {
+        const row = document.getElementById(id);
+        if (row) {
+          row.classList.replace('active', 'done');
+          row.querySelector('.step-status').textContent = '✓';
+        }
+      }
+
+    } else if (ev.type === 'token') {
+      raw += ev.text;
+      // Show raw text while streaming (no markdown — preserves indentation visually)
+      bubble.textContent = raw;
+      scrollToBottom();
+
+    } else if (ev.type === 'done') {
+      finishBubble(bubble, raw);
+      const hdr   = analysisPanel.querySelector('.analysis-header');
+      const count = Object.keys(stepsMap).length;
+      hdr.innerHTML = `<span class="analysis-caret open">▶</span>&nbsp;Analysis trace — ${count} agent step${count !== 1 ? 's' : ''} used&nbsp;<small style="font-weight:400;color:var(--green)">(click to toggle)</small>`;
+
+    } else if (ev.type === 'error') {
+      throw new Error(ev.message);
+    }
+  });
+
+  return raw;
+}
+
+// ════════════════════════════════════════════════════════════
+//  STREAMING — Direct tool
+// ════════════════════════════════════════════════════════════
+async function streamTool(toolName, inputText, bubble) {
+  const res = await fetch(`${API_BASE}/tool/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool_name: toolName, input_text: inputText }),
+  });
+  if (!res.ok) throw new Error((await res.json()).detail || 'Server error');
+
+  let raw = '';
+  await readSSE(res, (ev) => {
+    if (ev.type === 'token') {
+      raw += ev.text;
+      bubble.textContent = raw;
+      scrollToBottom();
+    } else if (ev.type === 'done') {
+      finishBubble(bubble, raw);
+    } else if (ev.type === 'error') {
+      throw new Error(ev.message);
+    }
+  });
+  return raw;
+}
+
+// ════════════════════════════════════════════════════════════
+//  SSE READER
+// ════════════════════════════════════════════════════════════
+async function readSSE(response, onEvent) {
+  const reader  = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer    = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try { onEvent(JSON.parse(line.slice(6))); }
+        catch { /* malformed SSE frame */ }
+      }
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  MARKDOWN RENDERER  (code-block safe — preserves indentation)
+// ════════════════════════════════════════════════════════════
+function renderMarkdown(text) {
+  if (!text) return '';
+
+  // ── STEP 1: Extract fenced code blocks and replace with placeholders ──
+  // This prevents the newline→<br> pass from touching code content.
+  const codeBlocks = [];
+  text = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+    const idx   = codeBlocks.length;
+    const label = lang || 'code';
+    // Store the raw code (no HTML conversion yet except escaping)
+    codeBlocks.push({ lang: label, code: code });
+    return `\x00CODE_BLOCK_${idx}\x00`;
+  });
+
+  // ── STEP 2: Process prose markdown ───────────────────────────────────
+  // Inline code (backtick)
+  text = text.replace(/`([^`\n]+)`/g, (_, c) => `<code>${escHtml(c)}</code>`);
+  // Bold / Italic
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/\*(.+?)\*/g,     '<em>$1</em>');
+  // Headings
+  text = text.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  text = text.replace(/^## (.+)$/gm,  '<h2>$1</h2>');
+  text = text.replace(/^# (.+)$/gm,   '<h1>$1</h1>');
+  // Horizontal rule
+  text = text.replace(/^---$/gm, '<hr>');
+  // Tables: | col | col |
+  text = text.replace(/^\|(.+)\|$/gm, (row) => {
+    const isSep = /^[\|\s\-:]+$/.test(row);
+    if (isSep) return '\x00TABLE_SEP\x00';
+    const cells = row.split('|').filter((_, i, a) => i > 0 && i < a.length - 1);
+    return '<tr>' + cells.map(c => `<td>${c.trim()}</td>`).join('') + '</tr>';
+  });
+  text = text.replace(/\x00TABLE_SEP\x00\n?/g, ''); // remove separator rows
+  // Wrap consecutive <tr> blocks in <table>
+  text = text.replace(/((?:<tr>.*?<\/tr>\n?)+)/gs, (block) => {
+    // Convert first row's <td> to <th>
+    const rows = block.trim().split('\n');
+    const head = rows[0].replace(/<td>/g, '<th>').replace(/<\/td>/g, '</th>');
+    const body = rows.slice(1).join('\n');
+    return `<table><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  });
+  // Unordered lists
+  text = text.replace(/^[ \t]*[-*] (.+)$/gm, '<li>$1</li>');
+  text = text.replace(/(<li>.*<\/li>\n?)+/gs, block => `<ul>${block}</ul>`);
+  // Ordered lists
+  text = text.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // Convert remaining newlines → <br> (prose only — code is still a placeholder)
+  text = text.replace(/\n/g, '<br>');
+
+  // ── STEP 3: Re-inject code blocks (now properly escaped & structured) ─
+  text = text.replace(/\x00CODE_BLOCK_(\d+)\x00/g, (_, idx) => {
+    const { lang, code } = codeBlocks[parseInt(idx)];
+    // IMPORTANT: use escHtml so < > & are safe, but do NOT convert newlines.
+    // The <pre> CSS has white-space:pre so newlines render as line breaks.
+    const safeCode = escHtml(code);
+    return `<pre><span class="lang-label">${escHtml(lang)}</span><code class="lang-${escHtml(lang)}">${safeCode}</code></pre>`;
+  });
+
+  return text;
+}
+
+// ════════════════════════════════════════════════════════════
+//  FINISH BUBBLE — render markdown + add copy buttons
+// ════════════════════════════════════════════════════════════
+function finishBubble(bubble, raw) {
+  bubble.classList.remove('stream-cursor');
+  bubble.innerHTML = renderMarkdown(raw);
+
+  bubble.querySelectorAll('pre').forEach(pre => {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'copy';
+    btn.onclick = () => {
+      // Copy the raw text of the code element (not innerHTML — avoids HTML entities)
+      const codeEl  = pre.querySelector('code');
+      const rawCode = codeEl ? codeEl.textContent : pre.textContent;
+      navigator.clipboard.writeText(rawCode).then(() => {
+        btn.textContent = '✓ copied';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'copy';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    };
+    pre.appendChild(btn);
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+//  DOM HELPERS
+// ════════════════════════════════════════════════════════════
+function appendMsgDOM(role, text) {
+  const msgs  = document.getElementById('messages');
+  const wrap  = document.createElement('div');
+  wrap.className = `msg ${role}`;
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = role === 'user' ? 'U' : '⬡';
+
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+
+  const header = document.createElement('div');
+  header.className = 'msg-header';
+  header.textContent = role === 'user' ? 'YOU' : 'APEX';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.innerHTML  = renderMarkdown(text);
+
+  // Add copy buttons to any code blocks
+  bubble.querySelectorAll('pre').forEach(pre => {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'copy';
+    btn.onclick = () => {
+      const codeEl  = pre.querySelector('code');
+      const rawCode = codeEl ? codeEl.textContent : pre.textContent;
+      navigator.clipboard.writeText(rawCode).then(() => {
+        btn.textContent = '✓ copied';
+        btn.classList.add('copied');
+        setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+      });
+    };
+    pre.appendChild(btn);
+  });
+
+  content.appendChild(header);
+  content.appendChild(bubble);
+  wrap.appendChild(avatar);
+  wrap.appendChild(content);
+  msgs.appendChild(wrap);
+}
+
+function appendAssistantBubble() {
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg assistant';
+
+  const avatar = document.createElement('div');
+  avatar.className = 'msg-avatar';
+  avatar.textContent = '⬡';
+
+  const content = document.createElement('div');
+  content.className = 'msg-content';
+
+  const header = document.createElement('div');
+  header.className = 'msg-header';
+  header.textContent = 'APEX';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble stream-cursor';
+  // Use white-space:pre-wrap while streaming so code looks right before markdown render
+  bubble.style.whiteSpace = 'pre-wrap';
+  bubble.style.fontFamily = 'inherit';
+  bubble.textContent = '';
+
+  const analysisPanel  = document.createElement('div');
+  analysisPanel.className = 'analysis-panel';
+  analysisPanel.style.display = currentMode === 'agent' ? '' : 'none';
+
+  const analysisHeader = document.createElement('div');
+  analysisHeader.className = 'analysis-header';
+  analysisHeader.innerHTML  = '<span class="analysis-caret">▶</span>&nbsp; Analysis trace';
+
+  const analysisBody = document.createElement('div');
+  analysisBody.className = 'analysis-body';
+
+  analysisHeader.onclick = () => {
+    analysisHeader.classList.toggle('open');
+    analysisBody.classList.toggle('open');
+  };
+
+  analysisPanel.appendChild(analysisHeader);
+  analysisPanel.appendChild(analysisBody);
+  content.appendChild(header);
+  content.appendChild(bubble);
+  content.appendChild(analysisPanel);
+  wrap.appendChild(avatar);
+  wrap.appendChild(content);
+  msgs.appendChild(wrap);
+  scrollToBottom();
+
+  return { wrap, bubble, stepsMap: {}, analysisBody, analysisPanel };
+}
+
+// ════════════════════════════════════════════════════════════
+//  UTILITIES
+// ════════════════════════════════════════════════════════════
+function escHtml(t) {
+  return String(t)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function scrollToBottom() {
+  const msgs = document.getElementById('messages');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+}
+
+function updateCount(el) {
+  document.getElementById('charCount').textContent = el.value.length;
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); sendMessage(); }
+}
+
+function fillExample(el) {
+  const input = document.getElementById('msgInput');
+  input.value = el.textContent;
+  autoResize(input);
+  updateCount(input);
+  input.focus();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
